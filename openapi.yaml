@@ -1,4 +1,18 @@
-﻿openapi: 3.1.1
-info: { title: SaasS-booking API, version: 1.0.0 }
+﻿openapi: 3.1.0
+servers: [
+  { 
+    url: "mock url",
+  }
+]
+info: { 
+  title: "Bookora API", 
+  version: "1.0.0",
+  description: "This is the API server for Bookora",
+  contact: {
+    name: "Nguyen Pham",
+    email: "nguyenminhpham24@gmail.com",
+  },
+}
 paths: {}
+
 
