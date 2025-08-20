@@ -1,0 +1,5 @@
+﻿{
+  "name": "specs-booking",
+  "private": true,
+  "scripts": { "lint:spec": "spectral lint openapi.yaml", "mock": "prism mock openapi.yaml -p 4020" }
+}
