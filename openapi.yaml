@@ -1,18 +1,323 @@
-﻿openapi: 3.1.0
-servers: [
-  { 
-    url: "mock url",
-  }
-]
-info: { 
-  title: "Bookora API", 
-  version: "1.0.0",
-  description: "This is the API server for Bookora",
-  contact: {
-    name: "Nguyen Pham",
-    email: "nguyenminhpham24@gmail.com",
-  },
-}
-paths: {}
+﻿# openapi: 3.1.0
+# servers: [
+#   { 
+#     url: "mock url",
+#   }
+# ]
+# info: { 
+#   title: "Bookora API", 
+#   version: "1.0.0",
+#   description: "This is the API server for Bookora",
+#   contact: {
+#     name: "Nguyen Pham",
+#     email: "nguyenminhpham24@gmail.com",
+#   },
+# }
+# paths: {}
 
+openapi: 3.1.0
+info:
+  title: Bookora API
+  version: 1.0.0
+  description: API for the multi-tenant SaaS booking platform.
+  contact:
+    name: Nguyen Pham
+    email: nguyenminhpham24@gmail.com
+servers:
+  - url: http://localhost:4020
+    description: Local Prism mock
+  - url: https://api.booking.example.com
+    description: Placeholder production
+tags:
+  - name: health
+  - name: auth
+  - name: tenants
+  - name: services
+  - name: resources
+  - name: availability
+  - name: bookings
+  - name: chat
+  - name: notifications
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Date:
+      name: date
+      in: query
+      required: true
+      description: ISO date (YYYY-MM-DD)
+      schema: { type: string, format: date }
+    ServiceId:
+      name: serviceId
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+  schemas:
+    Id:
+      type: string
+      format: uuid
+      examples: ["b1b2b3b4-1111-2222-3333-444455556666"]
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "NOT_FOUND" }
+        message: { type: string, example: "Resource not found." }
+        details: { type: object, additionalProperties: true }
+    Money:
+      type: object
+      required: [currency, amount]
+      properties:
+        currency:
+          type: string
+          enum: [USD, VND]
+          example: VND
+        amount:
+          type: number
+          format: float
+          example: 150000
+    User:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { type: string, enum: [owner, staff, customer], example: owner }
+        createdAt: { type: string, format: date-time }
+    Tenant:
+      type: object
+      required: [id, name, subdomain, createdAt]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: "Glow Spa" }
+        subdomain: { type: string, example: "glow" }
+        createdAt: { type: string, format: date-time }
+    Service:
+      type: object
+      required: [id, name, durationMinutes, price]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: "Massage 60m" }
+        durationMinutes: { type: integer, example: 60 }
+        price: { $ref: "#/components/schemas/Money" }
+    Resource:
+      type: object
+      required: [id, name]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: "Room A" }
+    AvailabilitySlot:
+      type: object
+      required: [start, end, resourceId]
+      properties:
+        start: { type: string, format: date-time, example: "2025-09-18T08:00:00Z" }
+        end:   { type: string, format: date-time, example: "2025-09-18T09:00:00Z" }
+        resourceId: { $ref: "#/components/schemas/Id" }
+    Booking:
+      type: object
+      required: [id, tenantId, serviceId, resourceId, start, end, status, customerName, customerEmail, createdAt]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        tenantId: { $ref: "#/components/schemas/Id" }
+        serviceId: { $ref: "#/components/schemas/Id" }
+        resourceId: { $ref: "#/components/schemas/Id" }
+        start: { type: string, format: date-time }
+        end:   { type: string, format: date-time }
+        status: { type: string, enum: [pending, confirmed, cancelled], example: pending }
+        customerName: { type: string, example: "Alice" }
+        customerEmail: { type: string, format: email, example: "alice@example.com" }
+        createdAt: { type: string, format: date-time }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    TenantCreateRequest:
+      type: object
+      required: [name, subdomain]
+      properties:
+        name: { type: string, example: "Glow Spa" }
+        subdomain: { type: string, example: "glow" }
+    BookingCreateRequest:
+      type: object
+      required: [tenantId, serviceId, resourceId, start, customer]
+      properties:
+        tenantId: { $ref: "#/components/schemas/Id" }
+        serviceId: { $ref: "#/components/schemas/Id" }
+        resourceId: { $ref: "#/components/schemas/Id" }
+        start: { type: string, format: date-time, example: "2025-09-18T08:00:00Z" }
+        customer:
+          type: object
+          required: [name, email]
+          properties:
+            name: { type: string, example: "Alice" }
+            email: { type: string, format: email, example: "alice@example.com" }
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: healthCheck
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { status: "ok" }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tokenType, user]
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string, example: "Bearer" }
+                  user: { $ref: "#/components/schemas/User" }
+              example:
+                accessToken: "eyJhbGciOi..."
+                tokenType: "Bearer"
+                user: { id: "b1b2b3b4-1111-2222-3333-444455556666", email: "owner@glowspa.com", name: "Owner", role: "owner", createdAt: "2025-08-20T08:00:00Z" }
+
+  /tenants:
+    post:
+      tags: [tenants]
+      operationId: createTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantCreateRequest" }
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+              example:
+                id: "77777777-7777-7777-7777-777777777777"
+                name: "Glow Spa"
+                subdomain: "glow"
+                createdAt: "2025-09-17T08:00:00Z"
+
+  /services:
+    get:
+      tags: [services]
+      operationId: listServices
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Service" }
+              example:
+                data:
+                  - id: "11111111-1111-1111-1111-111111111111"
+                    name: "Massage 60m"
+                    durationMinutes: 60
+                    price: { currency: VND, amount: 350000 }
+
+  /availability:
+    get:
+      tags: [availability]
+      operationId: getAvailability
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+        - $ref: "#/components/parameters/Date"
+      responses:
+        "200":
+          description: Availability slots for a service on a date
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AvailabilitySlot" }
+              example:
+                data:
+                  - start: "2025-09-18T08:00:00Z"
+                    end: "2025-09-18T09:00:00Z"
+                    resourceId: "abcdabcd-abcd-abcd-abcd-abcdabcdabcd"
+
+  /bookings:
+    post:
+      tags: [bookings]
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookingCreateRequest" }
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+              example:
+                id: "99999999-9999-9999-9999-999999999999"
+                tenantId: "77777777-7777-7777-7777-777777777777"
+                serviceId: "11111111-1111-1111-1111-111111111111"
+                resourceId: "abcdabcd-abcd-abcd-abcd-abcdabcdabcd"
+                start: "2025-09-18T08:00:00Z"
+                end: "2025-09-18T09:00:00Z"
+                status: "pending"
+                customerName: "Alice"
+                customerEmail: "alice@example.com"
+                createdAt: "2025-09-18T07:00:00Z"
+
+  /bookings/{id}:
+    patch:
+      tags: [bookings]
+      operationId: rescheduleBooking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                start: { type: string, format: date-time, example: "2025-09-19T10:00:00Z" }
+      responses:
+        "200":
+          description: Booking updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
